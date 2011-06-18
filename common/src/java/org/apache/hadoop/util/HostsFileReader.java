@@ -47,7 +47,6 @@ public abstract class HostsFileReader implements HostsReader {
   private Set<String> excludes;
   private String includesFile;
   private String excludesFile;
-  private int refreshSec;
   private boolean initialized = false;
 
   public HostsFileReader() throws IOException {
@@ -65,8 +64,14 @@ public abstract class HostsFileReader implements HostsReader {
     return excludes;
   }
 
-  public synchronized void refresh() throws IOException {
+  /**
+   * Refresh once right now.
+   * @return true if refresh was successful, otherwise false
+   * @throws IOException if unable to read hosts files
+   */
+  public synchronized boolean refresh() throws IOException {
     Preconditions.checkState(initialized);
+    boolean updated = false;
     LOG.info("Refreshing hosts lists: includes=" + includesFile
         + " excludes=" + excludesFile);
     if (includesFile != null) {
@@ -74,24 +79,30 @@ public abstract class HostsFileReader implements HostsReader {
       readFileToSet(includesFile, newIncludes);
       // switch the new hosts that are to be included
       includes = newIncludes;
+      updated = true;
     }
     if (excludesFile != null) {
       Set<String> newExcludes = new HashSet<String>();
       readFileToSet(excludesFile, newExcludes);
       // switch the excluded hosts
       excludes = newExcludes;
+      updated = true;
     }
+    return updated;
   }
 
   /**
-   * Automatically refresh every period of time.
-   * @param aop What to refresh.
-   * @param refreshSec Number of seconds between refreshes.
+   * Automatically refresh every period of time, starting now.
+   * @param aop what to refresh
+   * @param refreshSec number of seconds between refreshes
+   * @return true if refresh was successful, otherwise false
+   * @throws IOException if unable to read hosts files
    */
-  public synchronized void refresh(AdminOperationsProtocol aop, int refreshSec) {
+  public synchronized boolean refresh(AdminOperationsProtocol aop, int refreshSec) throws IOException {
     Preconditions.checkState(initialized);
     Timer refreshTimer = new Timer();
-    refreshTimer.schedule(new HostsFileRefreshTask(aop), 0, refreshSec);
+    refreshTimer.schedule(new HostsFileRefreshTask(aop), refreshSec, refreshSec);
+    return refresh();
   }
 
   public void setInitialized(boolean val) {
@@ -156,7 +167,9 @@ public abstract class HostsFileReader implements HostsReader {
   }
 
   /**
-   * Task for periodically refreshing hosts.
+   * Task for periodically refreshing hosts. Each period of time
+   * includes/excludes files are checked for changes. refreshNodes
+   * is called when changes are detected.
    */
   public class HostsFileRefreshTask extends TimerTask {
     private AdminOperationsProtocol aop;
@@ -167,7 +180,9 @@ public abstract class HostsFileReader implements HostsReader {
 
     public void run() {
       try {
-        aop.refreshNodes();
+        if (refresh()) {
+          aop.refreshNodes();
+        }
       } catch (IOException e) {
         LOG.error("Failed refreshing nodes!", e);
       }

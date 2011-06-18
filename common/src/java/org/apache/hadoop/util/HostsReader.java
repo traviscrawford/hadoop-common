@@ -37,9 +37,10 @@ public interface HostsReader extends Configurable {
    * For example, an implementation that blocks while updating is just as
    * valid as an implementation that does nothing as it stays up-to-date by
    * handling ZooKeeper watches.
+   * @return true if lists changed, otherwise false
    * @throws java.io.IOException When unable to refresh
    */
-  void refresh() throws IOException;
+  boolean refresh() throws IOException;
 
   /**
    * Get the set of hosts known to be cluster members.
