@@ -118,7 +118,8 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final boolean DFS_DATANODE_SYNCONCLOSE_DEFAULT = false;
   public static final String  DFS_DATANODE_SOCKET_REUSE_KEEPALIVE_KEY = "dfs.datanode.socket.reuse.keepalive";
   public static final int     DFS_DATANODE_SOCKET_REUSE_KEEPALIVE_DEFAULT = 1000;
-  public static final String  DFS_NAMENODE_HOSTS_READER_CLASS = "dfs.namenode.hosts.reader.class";
+  public static final String  DFS_NAMENODE_HOSTS_READER_REFRESH_SEC_KEY = "dfs.namenode.hosts.reader.refresh.sec";
+  public static final int     DFS_NAMENODE_HOSTS_READER_REFRESH_SEC_DEFAULT = -1;
 
   //Delegation token related keys
   public static final String  DFS_NAMENODE_DELEGATION_KEY_UPDATE_INTERVAL_KEY = "dfs.namenode.delegation.key.update-interval";
@@ -152,6 +153,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String  DFS_NAMENODE_CHECKPOINT_EDITS_DIR_KEY = "dfs.namenode.checkpoint.edits.dir";
   public static final String  DFS_HOSTS = "dfs.hosts";
   public static final String  DFS_HOSTS_EXCLUDE = "dfs.hosts.exclude";
+  public static final String  DFS_NAMENODE_HOSTS_READER_CLASS = "dfs.namenode.hosts.reader.class";
 
   // Much code in hdfs is not yet updated to use these keys.
   public static final String  DFS_CLIENT_BLOCK_WRITE_LOCATEFOLLOWINGBLOCK_RETRIES_KEY = "dfs.client.block.write.locateFollowingBlock.retries";

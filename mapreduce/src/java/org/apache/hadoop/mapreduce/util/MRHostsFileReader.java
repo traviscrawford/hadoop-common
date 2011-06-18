@@ -19,6 +19,13 @@ public class MRHostsFileReader extends HostsFileReader {
     setFileNames(getConf().get(JTConfig.JT_HOSTS_FILENAME, ""),
         getConf().get(JTConfig.JT_HOSTS_EXCLUDE_FILENAME, ""));
     setInitialized(true);
-    refresh();
+
+    int refreshSec = getConf().getInt(JTConfig.JT_HOSTS_READER_REFRESH_SEC_KEY,
+        JTConfig.JT_HOSTS_READER_REFRESH_SEC_DEFAULT);
+    if (refreshSec > -1) {
+      refresh(aop, refreshSec); // Automagically refresh.
+    } else {
+      refresh(); // Refresh once.
+    }
   }
 }

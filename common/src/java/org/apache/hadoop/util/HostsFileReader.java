@@ -32,6 +32,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * Keeps track of hosts included/excluded from the cluster.
@@ -45,6 +47,7 @@ public abstract class HostsFileReader implements HostsReader {
   private Set<String> excludes;
   private String includesFile;
   private String excludesFile;
+  private int refreshSec;
   private boolean initialized = false;
 
   public HostsFileReader() throws IOException {
@@ -78,6 +81,17 @@ public abstract class HostsFileReader implements HostsReader {
       // switch the excluded hosts
       excludes = newExcludes;
     }
+  }
+
+  /**
+   * Automatically refresh every period of time.
+   * @param aop What to refresh.
+   * @param refreshSec Number of seconds between refreshes.
+   */
+  public synchronized void refresh(AdminOperationsProtocol aop, int refreshSec) {
+    Preconditions.checkState(initialized);
+    Timer refreshTimer = new Timer();
+    refreshTimer.schedule(new HostsFileRefreshTask(aop), 0, refreshSec);
   }
 
   public void setInitialized(boolean val) {
@@ -138,6 +152,25 @@ public abstract class HostsFileReader implements HostsReader {
     } else {
       LOG.info("Setting excludes file to " + excludes);
       excludesFile = excludes;
+    }
+  }
+
+  /**
+   * Task for periodically refreshing hosts.
+   */
+  public class HostsFileRefreshTask extends TimerTask {
+    private AdminOperationsProtocol aop;
+
+    public HostsFileRefreshTask(AdminOperationsProtocol aop) {
+      this.aop = aop;
+    }
+
+    public void run() {
+      try {
+        aop.refreshNodes();
+      } catch (IOException e) {
+        LOG.error("Failed refreshing nodes!", e);
+      }
     }
   }
 }

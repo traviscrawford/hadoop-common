@@ -19,6 +19,13 @@ public class DFSHostsFileReader extends HostsFileReader {
     setFileNames(getConf().get(DFSConfigKeys.DFS_HOSTS, ""),
         getConf().get(DFSConfigKeys.DFS_HOSTS_EXCLUDE, ""));
     setInitialized(true);
-    refresh();
+
+    int refreshSec = getConf().getInt(DFSConfigKeys.DFS_NAMENODE_HOSTS_READER_REFRESH_SEC_KEY,
+        DFSConfigKeys.DFS_NAMENODE_HOSTS_READER_REFRESH_SEC_DEFAULT);
+    if (refreshSec > -1) {
+      refresh(aop, refreshSec); // Automagically refresh.
+    } else {
+      refresh(); // Refresh once.
+    }
   }
 }

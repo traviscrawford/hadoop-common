@@ -83,6 +83,9 @@ public interface JTConfig extends MRConfig {
     "mapreduce.jobtracker.hosts.exclude.filename";
   public static final String JT_HOSTS_READER_CLASS =
       "mapreduce.jobtracker.hosts.reader.class";
+  public static final String JT_HOSTS_READER_REFRESH_SEC_KEY =
+      "mapreduce.jobtracker.hosts.reader.refresh.sec";
+  public static final int JT_HOSTS_READER_REFRESH_SEC_DEFAULT = -1;
   public static final String JT_JOBHISTORY_CACHE_SIZE =
     "mapreduce.jobtracker.jobhistory.lru.cache.size";
   public static final String JT_JOBHISTORY_BLOCK_SIZE = 
