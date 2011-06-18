@@ -408,7 +408,7 @@ public class TestBlocksWithNotEnoughRacks {
           fs.getFileStatus(filePath), 0, Long.MAX_VALUE);
       String name = locs[0].getNames()[0];
       DFSTestUtil.writeFile(localFileSys, excludeFile, name);
-      ns.refreshNodes(conf);
+      ns.refreshNodes();
       DFSTestUtil.waitForDecommission(fs, name);
 
       // Check the block still has sufficient # replicas across racks
@@ -463,7 +463,7 @@ public class TestBlocksWithNotEnoughRacks {
         if (!top.startsWith("/rack2")) {
           String name = top.substring("/rack1".length()+1);
           DFSTestUtil.writeFile(localFileSys, excludeFile, name);
-          ns.refreshNodes(conf);
+          ns.refreshNodes();
           DFSTestUtil.waitForDecommission(fs, name);
           break;
         }

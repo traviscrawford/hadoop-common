@@ -15,41 +15,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.util;
+package org.apache.hadoop.hdfs.util;
+
+import static org.mockito.Mockito.*;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.util.AdminOperationsProtocol;
+import org.apache.hadoop.util.HostsFileReader;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.util.Set;
 
-import org.junit.*;
 import static org.junit.Assert.*;
 
-/*
- * Test for HostsFileReader.java
- * 
- */
-public class TestHostsFileReader {
-
-  // Using /test/build/data/tmp directory to store temprory files
-  final String HOSTS_TEST_DIR = new File(System.getProperty(
-          "test.build.data", "/tmp")).getAbsolutePath();
-  File EXCLUDES_FILE = new File(HOSTS_TEST_DIR, "dfs.exclude");
-  File INCLUDES_FILE = new File(HOSTS_TEST_DIR, "dfs.include");
-  String excludesFile = HOSTS_TEST_DIR + "/dfs.exclude";
-  String includesFile = HOSTS_TEST_DIR + "/dfs.include";
-  private Set<String> includes;
-  private Set<String> excludes;
+public class TestDFSHostsFileReader {
+  private final String HOSTS_TEST_DIR = new File(System.getProperty(
+      "test.build.data", "/tmp")).getAbsolutePath();
+  private File excludesFile = new File(HOSTS_TEST_DIR, "dfs.exclude");
+  private File includesFile = new File(HOSTS_TEST_DIR, "dfs.include");
+  private Configuration conf = new Configuration();
 
   @Before
   public void setUp() throws Exception {
-  }
+    this.conf.set(DFSConfigKeys.DFS_HOSTS, includesFile.getAbsolutePath());
+    this.conf.set(DFSConfigKeys.DFS_HOSTS_EXCLUDE, excludesFile.getAbsolutePath());
 
-  @After
-  public void tearDown() throws Exception {
-    // Delete test files after running tests
-    EXCLUDES_FILE.delete();
-    INCLUDES_FILE.delete();
-
+    excludesFile.deleteOnExit();
+    includesFile.deleteOnExit();
   }
 
   /*
@@ -84,20 +79,22 @@ public class TestHostsFileReader {
     ifw.write("somehost4 somehost5\n");
     ifw.close();
 
-    HostsFileReader hfp = new HostsFileReader(includesFile, excludesFile);
+    HostsFileReader hostsFileReader = new DFSHostsFileReader();
+    hostsFileReader.setConf(conf);
+    AdminOperationsProtocol mockedAop = mock(AdminOperationsProtocol.class);
+    hostsFileReader.initialize(mockedAop);
 
-    int includesLen = hfp.getHosts().size();
-    int excludesLen = hfp.getExcludedHosts().size();
+    int includesLen = hostsFileReader.getHosts().size();
+    int excludesLen = hostsFileReader.getExcludedHosts().size();
 
     assertEquals(5, includesLen);
     assertEquals(5, excludesLen);
 
-    assertTrue(hfp.getHosts().contains("somehost5"));
-    assertFalse(hfp.getHosts().contains("host3"));
+    assertTrue(hostsFileReader.getHosts().contains("somehost5"));
+    assertFalse(hostsFileReader.getHosts().contains("host3"));
 
-    assertTrue(hfp.getExcludedHosts().contains("somehost5"));
-    assertFalse(hfp.getExcludedHosts().contains("host4"));
-
+    assertTrue(hostsFileReader.getExcludedHosts().contains("somehost5"));
+    assertFalse(hostsFileReader.getExcludedHosts().contains("host4"));
   }
 
   /*
@@ -109,13 +106,15 @@ public class TestHostsFileReader {
     FileWriter ifw = new FileWriter(includesFile);
 
     efw.close();
-
     ifw.close();
 
-    HostsFileReader hfp = new HostsFileReader(includesFile, excludesFile);
+    HostsFileReader hostsFileReader = new DFSHostsFileReader();
+    hostsFileReader.setConf(conf);
+    AdminOperationsProtocol mockedAop = mock(AdminOperationsProtocol.class);
+    hostsFileReader.initialize(mockedAop);
 
-    int includesLen = hfp.getHosts().size();
-    int excludesLen = hfp.getExcludedHosts().size();
+    int includesLen = hostsFileReader.getHosts().size();
+    int excludesLen = hostsFileReader.getExcludedHosts().size();
 
     // TestCase1: Check if lines beginning with # are ignored
     assertEquals(0, includesLen);
@@ -123,9 +122,9 @@ public class TestHostsFileReader {
 
     // TestCase2: Check if given host names are reported by getHosts and
     // getExcludedHosts
-    assertFalse(hfp.getHosts().contains("somehost5"));
+    assertFalse(hostsFileReader.getHosts().contains("somehost5"));
 
-    assertFalse(hfp.getExcludedHosts().contains("somehost5"));
+    assertFalse(hostsFileReader.getExcludedHosts().contains("somehost5"));
   }
 
   /*
@@ -142,18 +141,20 @@ public class TestHostsFileReader {
     ifw.write("#Hosts-in-DFS\n");
     ifw.close();
 
-    HostsFileReader hfp = new HostsFileReader(includesFile, excludesFile);
+    HostsFileReader hostsFileReader = new DFSHostsFileReader();
+    hostsFileReader.setConf(conf);
+    AdminOperationsProtocol mockedAop = mock(AdminOperationsProtocol.class);
+    hostsFileReader.initialize(mockedAop);
 
-    int includesLen = hfp.getHosts().size();
-    int excludesLen = hfp.getExcludedHosts().size();
+    int includesLen = hostsFileReader.getHosts().size();
+    int excludesLen = hostsFileReader.getExcludedHosts().size();
 
     assertEquals(0, includesLen);
     assertEquals(0, excludesLen);
 
-    assertFalse(hfp.getHosts().contains("somehost5"));
+    assertFalse(hostsFileReader.getHosts().contains("somehost5"));
 
-    assertFalse(hfp.getExcludedHosts().contains("somehost5"));
-
+    assertFalse(hostsFileReader.getExcludedHosts().contains("somehost5"));
   }
 
   /*
@@ -174,22 +175,24 @@ public class TestHostsFileReader {
     ifw.write("   somehost3 # somehost4");
     ifw.close();
 
-    HostsFileReader hfp = new HostsFileReader(includesFile, excludesFile);
+    HostsFileReader hostsFileReader = new DFSHostsFileReader();
+    hostsFileReader.setConf(conf);
+    AdminOperationsProtocol mockedAop = mock(AdminOperationsProtocol.class);
+    hostsFileReader.initialize(mockedAop);
 
-    int includesLen = hfp.getHosts().size();
-    int excludesLen = hfp.getExcludedHosts().size();
+    int includesLen = hostsFileReader.getHosts().size();
+    int excludesLen = hostsFileReader.getExcludedHosts().size();
 
     assertEquals(3, includesLen);
     assertEquals(3, excludesLen);
 
-    assertTrue(hfp.getHosts().contains("somehost3"));
-    assertFalse(hfp.getHosts().contains("somehost5"));
-    assertFalse(hfp.getHosts().contains("somehost4"));
+    assertTrue(hostsFileReader.getHosts().contains("somehost3"));
+    assertFalse(hostsFileReader.getHosts().contains("somehost5"));
+    assertFalse(hostsFileReader.getHosts().contains("somehost4"));
 
-    assertTrue(hfp.getExcludedHosts().contains("somehost3"));
-    assertFalse(hfp.getExcludedHosts().contains("somehost5"));
-    assertFalse(hfp.getExcludedHosts().contains("somehost4"));
-
+    assertTrue(hostsFileReader.getExcludedHosts().contains("somehost3"));
+    assertFalse(hostsFileReader.getExcludedHosts().contains("somehost5"));
+    assertFalse(hostsFileReader.getExcludedHosts().contains("somehost4"));
   }
 
   /*
@@ -212,19 +215,21 @@ public class TestHostsFileReader {
     ifw.write("   somehost3 \t # somehost5");
     ifw.close();
 
-    HostsFileReader hfp = new HostsFileReader(includesFile, excludesFile);
+    HostsFileReader hostsFileReader = new DFSHostsFileReader();
+    hostsFileReader.setConf(conf);
+    AdminOperationsProtocol mockedAop = mock(AdminOperationsProtocol.class);
+    hostsFileReader.initialize(mockedAop);
 
-    int includesLen = hfp.getHosts().size();
-    int excludesLen = hfp.getExcludedHosts().size();
+    int includesLen = hostsFileReader.getHosts().size();
+    int excludesLen = hostsFileReader.getExcludedHosts().size();
 
     assertEquals(4, includesLen);
     assertEquals(4, excludesLen);
 
-    assertTrue(hfp.getHosts().contains("somehost2"));
-    assertFalse(hfp.getHosts().contains("somehost5"));
+    assertTrue(hostsFileReader.getHosts().contains("somehost2"));
+    assertFalse(hostsFileReader.getHosts().contains("somehost5"));
 
-    assertTrue(hfp.getExcludedHosts().contains("somehost2"));
-    assertFalse(hfp.getExcludedHosts().contains("somehost5"));
-
+    assertTrue(hostsFileReader.getExcludedHosts().contains("somehost2"));
+    assertFalse(hostsFileReader.getExcludedHosts().contains("somehost5"));
   }
 }

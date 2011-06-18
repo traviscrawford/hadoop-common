@@ -45,7 +45,7 @@ public class MapReducePolicyProvider extends PolicyProvider {
       new Service("security.refresh.user.mappings.protocol.acl", 
                   RefreshUserMappingsProtocol.class),
       new Service("security.admin.operations.protocol.acl", 
-                  AdminOperationsProtocol.class),
+                  MRAdminOperationsProtocol.class),
       new Service("security.get.user.mappings.protocol.acl",
                   GetUserMappingsProtocol.class)
   };

@@ -24,8 +24,8 @@ import org.apache.hadoop.security.authorize.ServiceAuthorizationManager;
 import junit.framework.TestCase;
 
 /**
- * Test case to check if {@link AdminOperationsProtocol#refreshNodes()} and 
- * {@link AdminOperationsProtocol#refreshQueueAcls()} works with service-level
+ * Test case to check if {@link MRAdminOperationsProtocol#refreshNodes()} and
+ * {@link MRAdminOperationsProtocol#refreshQueueAcls()} works with service-level
  * authorization enabled i.e 'hadoop.security.authorization' set to true.
  */
 public class TestAdminOperationsProtocolWithServiceAuthorization 

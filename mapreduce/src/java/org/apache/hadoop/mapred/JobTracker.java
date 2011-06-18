@@ -91,10 +91,10 @@ import org.apache.hadoop.mapreduce.security.token.JobTokenSecretManager;
 import org.apache.hadoop.mapreduce.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.mapreduce.security.token.delegation.DelegationTokenSecretManager;
 import org.apache.hadoop.mapreduce.server.jobtracker.JTConfig;
-import org.apache.hadoop.mapreduce.server.jobtracker.State;
 import org.apache.hadoop.mapreduce.server.jobtracker.TaskTracker;
 import org.apache.hadoop.mapreduce.util.ConfigUtil;
 import org.apache.hadoop.mapreduce.util.MRAsyncDiskService;
+import org.apache.hadoop.mapreduce.util.MRHostsFileReader;
 import org.apache.hadoop.net.DNSToSwitchMapping;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.net.NetworkTopology;
@@ -112,10 +112,9 @@ import org.apache.hadoop.security.authorize.AccessControlList;
 import org.apache.hadoop.security.authorize.AuthorizationException;
 import org.apache.hadoop.security.authorize.ProxyUsers;
 import org.apache.hadoop.security.authorize.RefreshAuthorizationPolicyProtocol;
-import org.apache.hadoop.security.authorize.ServiceAuthorizationManager;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.tools.GetUserMappingsProtocol;
-import org.apache.hadoop.util.HostsFileReader;
+import org.apache.hadoop.util.HostsReader;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.ServicePlugin;
 import org.apache.hadoop.util.StringUtils;
@@ -130,7 +129,7 @@ import org.apache.hadoop.util.VersionInfo;
 @InterfaceStability.Unstable
 public class JobTracker implements MRConstants, InterTrackerProtocol,
     ClientProtocol, TaskTrackerManager, RefreshUserMappingsProtocol,
-    RefreshAuthorizationPolicyProtocol, AdminOperationsProtocol, 
+    RefreshAuthorizationPolicyProtocol, MRAdminOperationsProtocol,
     GetUserMappingsProtocol, JTConfig {
 
   static{
@@ -322,8 +321,8 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
       return ClientProtocol.versionID;
     } else if (protocol.equals(RefreshAuthorizationPolicyProtocol.class.getName())){
       return RefreshAuthorizationPolicyProtocol.versionID;
-    } else if (protocol.equals(AdminOperationsProtocol.class.getName())){
-      return AdminOperationsProtocol.versionID;
+    } else if (protocol.equals(MRAdminOperationsProtocol.class.getName())){
+      return MRAdminOperationsProtocol.versionID;
     } else if (protocol.equals(RefreshUserMappingsProtocol.class.getName())){
       return RefreshUserMappingsProtocol.versionID;
     } else if (protocol.equals(GetUserMappingsProtocol.class.getName())){
@@ -1225,7 +1224,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
   int totalSubmissions = 0;
   private int totalMapTaskCapacity;
   private int totalReduceTaskCapacity;
-  private final HostsFileReader hostsReader;
+  private final HostsReader hostsReader;
   
   // JobTracker recovery variables
   private volatile boolean hasRecovered = false;
@@ -1465,8 +1464,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
     initializeTaskMemoryRelatedConfig();
 
     // Read the hosts/exclude files to restrict access to the jobtracker.
-    this.hostsReader = new HostsFileReader(conf.get(JTConfig.JT_HOSTS_FILENAME, ""),
-                                           conf.get(JTConfig.JT_HOSTS_EXCLUDE_FILENAME, ""));
+    this.hostsReader = getHostsReader(conf);
 
     Configuration clusterConf = new Configuration(this.conf);
     queueManager = new QueueManager(clusterConf);
@@ -4245,9 +4243,6 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
     // Update the file names and refresh internal includes and excludes list
     LOG.info("Refreshing hosts information");
     Configuration conf = new Configuration();
-
-    hostsReader.updateFileNames(conf.get(JTConfig.JT_HOSTS_FILENAME,""), 
-                                conf.get(JTConfig.JT_HOSTS_EXCLUDE_FILENAME, ""));
     hostsReader.refresh();
     
     Set<String> excludeSet = new HashSet<String>();
@@ -4260,6 +4255,23 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
       }
     }
     decommissionNodes(excludeSet);
+  }
+
+  /**
+   * Get a configured instance of the appropriate HostsReader implementation,
+   * defaulting to MRHostsFileReader.
+   *
+   * @param conf All settings loaded from this configuration.
+   * @return A configured instance of the appropriate HostsReader.
+   * @throws IOException HostsReader was unable to load hosts.
+   */
+  private static HostsReader getHostsReader(Configuration conf) throws IOException {
+    Class<? extends HostsReader> hostsReaderClass =
+        conf.getClass(JTConfig.JT_HOSTS_READER_CLASS,
+            MRHostsFileReader.class, HostsReader.class);
+    HostsReader hostsReader = ReflectionUtils.newInstance(hostsReaderClass, conf);
+    hostsReader.refresh();
+    return hostsReader;
   }
 
   // main decommission
@@ -4679,8 +4691,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
     
     secretManager = null;
     
-    this.hostsReader = new HostsFileReader(conf.get(JTConfig.JT_HOSTS_FILENAME, ""),
-        conf.get(JTConfig.JT_HOSTS_EXCLUDE_FILENAME, ""));
+    this.hostsReader = getHostsReader(conf);
     // queue manager
     Configuration clusterConf = new Configuration(this.conf);
     queueManager = new QueueManager(clusterConf);

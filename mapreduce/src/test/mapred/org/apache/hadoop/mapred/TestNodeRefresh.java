@@ -22,9 +22,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import junit.framework.TestCase;
@@ -46,7 +44,6 @@ import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.server.jobtracker.JTConfig;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.util.Shell.ShellCommandExecutor;
 
 /**
  * Test node decommissioning and recommissioning via refresh. Also check if the 
@@ -144,12 +141,12 @@ public class TestNodeRefresh extends TestCase {
     }
   }
 
-  private AdminOperationsProtocol getClient(Configuration conf, 
+  private MRAdminOperationsProtocol getClient(Configuration conf,
                                                    UserGroupInformation ugi) 
   throws IOException {
-    return (AdminOperationsProtocol)RPC.getProxy(AdminOperationsProtocol.class,
-        AdminOperationsProtocol.versionID, JobTracker.getAddress(conf), ugi, 
-        conf, NetUtils.getSocketFactory(conf, AdminOperationsProtocol.class));
+    return (MRAdminOperationsProtocol)RPC.getProxy(MRAdminOperationsProtocol.class,
+        MRAdminOperationsProtocol.versionID, JobTracker.getAddress(conf), ugi,
+        conf, NetUtils.getSocketFactory(conf, MRAdminOperationsProtocol.class));
   }
 
   /**
@@ -165,7 +162,7 @@ public class TestNodeRefresh extends TestCase {
     conf = mr.createJobConf(new JobConf(conf));
 
     // refresh with wrong user
-    AdminOperationsProtocol client = getClient(conf, user1);
+    MRAdminOperationsProtocol client = getClient(conf, user1);
     boolean success = false;
     try {
       // Also try tool runner
@@ -226,7 +223,7 @@ public class TestNodeRefresh extends TestCase {
     conf = mr.createJobConf(new JobConf(conf));
 
     // refresh with wrong user
-    AdminOperationsProtocol client = getClient(conf, user2);
+    MRAdminOperationsProtocol client = getClient(conf, user2);
     boolean success = false;
     try {
       // Also try tool runner
@@ -307,7 +304,7 @@ public class TestNodeRefresh extends TestCase {
     }
     file.deleteOnExit();
 
-    AdminOperationsProtocol client = getClient(conf, owner);
+    MRAdminOperationsProtocol client = getClient(conf, owner);
     try {
       client.refreshNodes();
     } catch (IOException ioe){}
@@ -375,7 +372,7 @@ public class TestNodeRefresh extends TestCase {
     
     conf = mr.createJobConf(new JobConf(conf));
 
-    AdminOperationsProtocol client = getClient(conf, owner);
+    MRAdminOperationsProtocol client = getClient(conf, owner);
     try {
       client.refreshNodes();
     } catch (IOException ioe){}

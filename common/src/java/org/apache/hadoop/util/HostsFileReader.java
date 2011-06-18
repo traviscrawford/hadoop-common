@@ -18,34 +18,78 @@
 
 package org.apache.hadoop.util;
 
-import java.io.*;
-import java.util.Set;
-import java.util.HashSet;
-
-import org.apache.commons.logging.LogFactory;
+import com.google.common.base.Preconditions;
 import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.conf.Configuration;
 
-// Keeps track of which datanodes/tasktrackers are allowed to connect to the 
-// namenode/jobtracker.
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * Keeps track of hosts included/excluded from the cluster.
+ */
 @InterfaceAudience.LimitedPrivate({"HDFS", "MapReduce"})
 @InterfaceStability.Unstable
-public class HostsFileReader {
+public abstract class HostsFileReader implements HostsReader {
+  private static final Log LOG = LogFactory.getLog(HostsFileReader.class);
+  private Configuration conf;
   private Set<String> includes;
   private Set<String> excludes;
   private String includesFile;
   private String excludesFile;
-  
-  private static final Log LOG = LogFactory.getLog(HostsFileReader.class);
+  private boolean initialized = false;
 
-  public HostsFileReader(String inFile, 
-                         String exFile) throws IOException {
+  public HostsFileReader() throws IOException {
     includes = new HashSet<String>();
     excludes = new HashSet<String>();
-    includesFile = inFile;
-    excludesFile = exFile;
-    refresh();
+  }
+
+  public synchronized Set<String> getHosts() {
+    Preconditions.checkState(initialized);
+    return includes;
+  }
+
+  public synchronized Set<String> getExcludedHosts() {
+    Preconditions.checkState(initialized);
+    return excludes;
+  }
+
+  public synchronized void refresh() throws IOException {
+    Preconditions.checkState(initialized);
+    LOG.info("Refreshing hosts lists: includes=" + includesFile
+        + " excludes=" + excludesFile);
+    if (includesFile != null) {
+      Set<String> newIncludes = new HashSet<String>();
+      readFileToSet(includesFile, newIncludes);
+      // switch the new hosts that are to be included
+      includes = newIncludes;
+    }
+    if (excludesFile != null) {
+      Set<String> newExcludes = new HashSet<String>();
+      readFileToSet(excludesFile, newExcludes);
+      // switch the excluded hosts
+      excludes = newExcludes;
+    }
+  }
+
+  public void setInitialized(boolean val) {
+    initialized = val;
+  }
+
+  public Configuration getConf() {
+    return this.conf;
+  }
+
+  public void setConf(Configuration conf) {
+    this.conf = conf;
   }
 
   private void readFileToSet(String filename, Set<String> set) throws IOException {
@@ -61,64 +105,39 @@ public class HostsFileReader {
       while ((line = reader.readLine()) != null) {
         String[] nodes = line.split("[ \t\n\f\r]+");
         if (nodes != null) {
-          for (int i = 0; i < nodes.length; i++) {
-            if (nodes[i].trim().startsWith("#")) {
+          for (String node : nodes) {
+            if (node.trim().startsWith("#")) {
               // Everything from now on is a comment
               break;
             }
-            if (!nodes[i].equals("")) {
-              LOG.info("Adding " + nodes[i] + " to the list of hosts from " + filename);
-              set.add(nodes[i]);  // might need to add canonical name
+            if (!node.equals("")) {
+              LOG.info("Adding " + node + " to the list of hosts from " + filename);
+              set.add(node);  // might need to add canonical name
             }
           }
         }
-      }   
+      }
     } finally {
       if (reader != null) {
         reader.close();
       }
       fis.close();
-    }  
-  }
-
-  public synchronized void refresh() throws IOException {
-    LOG.info("Refreshing hosts (include/exclude) list");
-    if (!includesFile.equals("")) {
-      Set<String> newIncludes = new HashSet<String>();
-      readFileToSet(includesFile, newIncludes);
-      // switch the new hosts that are to be included
-      includes = newIncludes;
-    }
-    if (!excludesFile.equals("")) {
-      Set<String> newExcludes = new HashSet<String>();
-      readFileToSet(excludesFile, newExcludes);
-      // switch the excluded hosts
-      excludes = newExcludes;
     }
   }
 
-  public synchronized Set<String> getHosts() {
-    return includes;
-  }
+  protected synchronized void setFileNames(String includes, String excludes) {
+    if (includes.equals("")) {
+      LOG.info("Not using a hosts include file as its value is unspecified.");
+    } else {
+      LOG.info("Setting includes file to " + includes);
+      includesFile = includes;
+    }
 
-  public synchronized Set<String> getExcludedHosts() {
-    return excludes;
-  }
-
-  public synchronized void setIncludesFile(String includesFile) {
-    LOG.info("Setting the includes file to " + includesFile);
-    this.includesFile = includesFile;
-  }
-  
-  public synchronized void setExcludesFile(String excludesFile) {
-    LOG.info("Setting the excludes file to " + excludesFile);
-    this.excludesFile = excludesFile;
-  }
-
-  public synchronized void updateFileNames(String includesFile, 
-                                           String excludesFile) 
-                                           throws IOException {
-    setIncludesFile(includesFile);
-    setExcludesFile(excludesFile);
+    if (excludes.equals("")) {
+      LOG.info("Not using a hosts exclude file as its value is unspecified.");
+    } else {
+      LOG.info("Setting excludes file to " + excludes);
+      excludesFile = excludes;
+    }
   }
 }

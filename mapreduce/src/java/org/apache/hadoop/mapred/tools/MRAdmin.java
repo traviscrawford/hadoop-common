@@ -26,7 +26,7 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RemoteException;
-import org.apache.hadoop.mapred.AdminOperationsProtocol;
+import org.apache.hadoop.mapred.MRAdminOperationsProtocol;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.JobTracker;
 import org.apache.hadoop.net.NetUtils;
@@ -237,16 +237,16 @@ public class MRAdmin extends Configured implements Tool {
     Configuration conf = getConf();
     
     // Create the client
-    AdminOperationsProtocol adminOperationsProtocol = 
-      (AdminOperationsProtocol) 
-      RPC.getProxy(AdminOperationsProtocol.class, 
-                   AdminOperationsProtocol.versionID, 
+    MRAdminOperationsProtocol mrAdminOperationsProtocol =
+      (MRAdminOperationsProtocol)
+      RPC.getProxy(MRAdminOperationsProtocol.class,
+                   MRAdminOperationsProtocol.versionID,
                    JobTracker.getAddress(conf), getUGI(conf), conf,
                    NetUtils.getSocketFactory(conf, 
-                                             AdminOperationsProtocol.class));
+                                             MRAdminOperationsProtocol.class));
     
     // Refresh the queue properties
-    adminOperationsProtocol.refreshQueues();
+    mrAdminOperationsProtocol.refreshQueues();
     
     return 0;
   }
@@ -262,16 +262,16 @@ public class MRAdmin extends Configured implements Tool {
     Configuration conf = getConf();
     
     // Create the client
-    AdminOperationsProtocol adminOperationsProtocol = 
-      (AdminOperationsProtocol) 
-      RPC.getProxy(AdminOperationsProtocol.class, 
-                   AdminOperationsProtocol.versionID, 
+    MRAdminOperationsProtocol mrAdminOperationsProtocol =
+      (MRAdminOperationsProtocol)
+      RPC.getProxy(MRAdminOperationsProtocol.class,
+                   MRAdminOperationsProtocol.versionID,
                    JobTracker.getAddress(conf), getUGI(conf), conf,
                    NetUtils.getSocketFactory(conf, 
-                                             AdminOperationsProtocol.class));
+                                             MRAdminOperationsProtocol.class));
     
     // Refresh the queue properties
-    adminOperationsProtocol.refreshNodes();
+    mrAdminOperationsProtocol.refreshNodes();
     
     return 0;
   }

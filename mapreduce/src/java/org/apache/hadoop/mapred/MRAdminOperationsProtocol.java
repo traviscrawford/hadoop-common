@@ -25,6 +25,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.ipc.VersionedProtocol;
 import org.apache.hadoop.mapreduce.server.jobtracker.JTConfig;
 import org.apache.hadoop.security.KerberosInfo;
+import org.apache.hadoop.util.AdminOperationsProtocol;
 
 /**
  * Protocol for admin operations. This is a framework-public interface and is
@@ -34,7 +35,8 @@ import org.apache.hadoop.security.KerberosInfo;
     serverPrincipal = JTConfig.JT_USER_NAME)
 @InterfaceAudience.Private
 @InterfaceStability.Stable
-public interface AdminOperationsProtocol extends VersionedProtocol {
+public interface MRAdminOperationsProtocol extends
+    AdminOperationsProtocol,VersionedProtocol {
   
   /**
    * Version 1: Initial version. Added refreshQueueAcls.
@@ -49,9 +51,4 @@ public interface AdminOperationsProtocol extends VersionedProtocol {
    * Access control lists and queue states are refreshed.
    */
   void refreshQueues() throws IOException;
-  
-  /**
-   * Refresh the node list at the {@link JobTracker} 
-   */
-  void refreshNodes() throws IOException;
 }

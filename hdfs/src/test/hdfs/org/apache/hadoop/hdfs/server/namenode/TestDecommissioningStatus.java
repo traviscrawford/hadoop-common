@@ -160,7 +160,7 @@ public class TestDecommissioningStatus {
     ArrayList<String> nodes = new ArrayList<String>(decommissionedNodes);
     nodes.add(nodename);
     writeConfigFile(localFileSys, excludeFile, nodes);
-    namesystem.refreshNodes(conf);
+    namesystem.refreshNodes();
     return nodename;
   }
 
@@ -224,7 +224,7 @@ public class TestDecommissioningStatus {
     // This will remove the datanodes from decommissioning list and
     // make them available again.
     writeConfigFile(localFileSys, excludeFile, null);
-    fsn.refreshNodes(conf);
+    fsn.refreshNodes();
     st1.close();
     cleanupFile(fileSys, file1);
     cleanupFile(fileSys, file2);

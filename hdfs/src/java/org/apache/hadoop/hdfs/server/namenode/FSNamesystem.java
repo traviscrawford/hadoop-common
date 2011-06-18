@@ -120,6 +120,7 @@ import org.apache.hadoop.hdfs.server.protocol.NamenodeCommand;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeRegistration;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.server.protocol.UpgradeCommand;
+import org.apache.hadoop.hdfs.util.DFSHostsFileReader;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ipc.Server;
@@ -140,8 +141,10 @@ import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
 import org.apache.hadoop.security.token.SecretManager.InvalidToken;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.delegation.DelegationKey;
+import org.apache.hadoop.util.AdminOperationsProtocol;
 import org.apache.hadoop.util.Daemon;
 import org.apache.hadoop.util.HostsFileReader;
+import org.apache.hadoop.util.HostsReader;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.VersionInfo;
@@ -162,7 +165,7 @@ import org.mortbay.util.ajax.JSON;
 @InterfaceAudience.Private
 @Metrics(context="dfs")
 public class FSNamesystem implements FSConstants, FSNamesystemMBean,
-    FSClusterStats, NameNodeMXBean {
+    FSClusterStats, NameNodeMXBean, AdminOperationsProtocol {
   public static final Log LOG = LogFactory.getLog(FSNamesystem.class);
 
   private static final ThreadLocal<StringBuilder> auditBuffer =
@@ -317,7 +320,7 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
   NetworkTopology clusterMap = new NetworkTopology();
   private DNSToSwitchMapping dnsToSwitchMapping;
 
-  private HostsFileReader hostsReader; 
+  private HostsReader hostsReader;
   private Daemon dnthread = null;
 
   private long maxFsObjects = 0;          // maximum number of fs objects
@@ -378,9 +381,7 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
       this.dir = new FSDirectory(fsImage, this, conf);
     }
     this.safeMode = new SafeModeInfo(conf);
-    this.hostsReader = new HostsFileReader(
-      conf.get(DFSConfigKeys.DFS_HOSTS,""),
-      conf.get(DFSConfigKeys.DFS_HOSTS_EXCLUDE,""));
+    this.hostsReader = getHostsReader(conf);
     if (isBlockTokenEnabled) {
       blockTokenSecretManager = new BlockTokenSecretManager(true,
           blockKeyUpdateInterval, blockTokenLifetime);
@@ -4049,6 +4050,23 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
   }
 
   /**
+   * Get a configured instance of the appropriate HostsReader implementation,
+   * defaulting to DFSHostsFileReader.
+   *
+   * @param conf All settings loaded from this configuration.
+   * @return A configured instance of the appropriate HostsReader.
+   * @throws IOException HostsReader was unable to load hosts.
+   */
+  private static HostsReader getHostsReader(Configuration conf) throws IOException {
+    Class<? extends HostsReader> hostsReaderClass =
+        conf.getClass(DFSConfigKeys.DFS_NAMENODE_HOSTS_READER_CLASS,
+            DFSHostsFileReader.class, HostsReader.class);
+    HostsReader hostsReader = ReflectionUtils.newInstance(hostsReaderClass, conf);
+    hostsReader.refresh();
+    return hostsReader;
+  }
+
+  /**
    * Rereads the config to get hosts and exclude list file names.
    * Rereads the files to update the hosts and exclude lists.  It
    * checks if any of the hosts have changed states:
@@ -4057,14 +4075,8 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
    * 3. Added to exclude --> start decommission.
    * 4. Removed from exclude --> stop decommission.
    */
-  public void refreshNodes(Configuration conf) throws IOException {
+  public void refreshNodes() throws IOException {
     checkSuperuserPrivilege();
-    // Reread the config to get dfs.hosts and dfs.hosts.exclude filenames.
-    // Update the file names and refresh internal includes and excludes list
-    if (conf == null)
-      conf = new HdfsConfiguration();
-    hostsReader.updateFileNames(conf.get(DFSConfigKeys.DFS_HOSTS,""), 
-                                conf.get(DFSConfigKeys.DFS_HOSTS_EXCLUDE, ""));
     hostsReader.refresh();
     writeLock();
     try {

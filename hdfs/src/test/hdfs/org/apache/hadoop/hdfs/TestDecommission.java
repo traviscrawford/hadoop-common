@@ -201,7 +201,7 @@ public class TestDecommission {
     }
     nodes.add(nodename);
     writeConfigFile(excludeFile, nodes);
-    cluster.getNamesystem(nnIndex).refreshNodes(conf);
+    cluster.getNamesystem(nnIndex).refreshNodes();
     DatanodeInfo ret = NameNodeAdapter.getDatanode(
         cluster.getNameNode(nnIndex), info[index]);
     waitNodeState(ret, waitForState);
@@ -372,7 +372,7 @@ public class TestDecommission {
       
       // Stop decommissioning and verify stats
       writeConfigFile(excludeFile, null);
-      fsn.refreshNodes(conf);
+      fsn.refreshNodes();
       DatanodeInfo ret = NameNodeAdapter.getDatanode(namenode, downnode);
       waitNodeState(ret, AdminStates.NORMAL);
       verifyStats(namenode, fsn, ret, false);
@@ -416,7 +416,7 @@ public class TestDecommission {
     writeConfigFile(hostsFile, list);
     
     for (int j = 0; j < numNameNodes; j++) {
-      cluster.getNamesystem(j).refreshNodes(conf);
+      cluster.getNamesystem(j).refreshNodes();
       
       DFSClient client = getDfsClient(cluster.getNameNode(j), conf);
       DatanodeInfo[] info = client.datanodeReport(DatanodeReportType.LIVE);

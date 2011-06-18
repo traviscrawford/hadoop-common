@@ -1151,12 +1151,10 @@ public class NameNode implements NamenodeProtocols, FSConstants {
   }
 
   /**
-   * Refresh the list of datanodes that the namenode should allow to  
-   * connect.  Re-reads conf by creating new HdfsConfiguration object and 
-   * uses the files list in the configuration to update the list. 
+   * Refresh lists of datanodes that the namenode should allow to connect.
    */
   public void refreshNodes() throws IOException {
-    namesystem.refreshNodes(new HdfsConfiguration());
+    namesystem.refreshNodes();
   }
 
   /**
