@@ -1465,6 +1465,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
 
     // Read the hosts/exclude files to restrict access to the jobtracker.
     this.hostsReader = getHostsReader(conf);
+    hostsReader.initialize(this);
 
     Configuration clusterConf = new Configuration(this.conf);
     queueManager = new QueueManager(clusterConf);
@@ -4269,9 +4270,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
     Class<? extends HostsReader> hostsReaderClass =
         conf.getClass(JTConfig.JT_HOSTS_READER_CLASS,
             MRHostsFileReader.class, HostsReader.class);
-    HostsReader hostsReader = ReflectionUtils.newInstance(hostsReaderClass, conf);
-    hostsReader.refresh();
-    return hostsReader;
+    return ReflectionUtils.newInstance(hostsReaderClass, conf);
   }
 
   // main decommission
@@ -4692,6 +4691,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
     secretManager = null;
     
     this.hostsReader = getHostsReader(conf);
+    hostsReader.initialize(this);
     // queue manager
     Configuration clusterConf = new Configuration(this.conf);
     queueManager = new QueueManager(clusterConf);

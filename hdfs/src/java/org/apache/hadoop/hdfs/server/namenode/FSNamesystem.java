@@ -382,6 +382,7 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
     }
     this.safeMode = new SafeModeInfo(conf);
     this.hostsReader = getHostsReader(conf);
+    hostsReader.initialize(this);
     if (isBlockTokenEnabled) {
       blockTokenSecretManager = new BlockTokenSecretManager(true,
           blockKeyUpdateInterval, blockTokenLifetime);
@@ -4061,9 +4062,7 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
     Class<? extends HostsReader> hostsReaderClass =
         conf.getClass(DFSConfigKeys.DFS_NAMENODE_HOSTS_READER_CLASS,
             DFSHostsFileReader.class, HostsReader.class);
-    HostsReader hostsReader = ReflectionUtils.newInstance(hostsReaderClass, conf);
-    hostsReader.refresh();
-    return hostsReader;
+    return ReflectionUtils.newInstance(hostsReaderClass, conf);
   }
 
   /**
