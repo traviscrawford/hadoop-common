@@ -77,16 +77,24 @@ public abstract class HostsFileReader implements HostsReader {
     if (includesFile != null) {
       Set<String> newIncludes = new HashSet<String>();
       readFileToSet(includesFile, newIncludes);
-      // switch the new hosts that are to be included
-      includes = newIncludes;
-      updated = true;
+      if (!includes.equals(newIncludes)) {
+        includes = newIncludes;
+        updated = true;
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Updated includes: " + includes);
+        }
+      }
     }
     if (excludesFile != null) {
       Set<String> newExcludes = new HashSet<String>();
       readFileToSet(excludesFile, newExcludes);
-      // switch the excluded hosts
-      excludes = newExcludes;
-      updated = true;
+      if (!excludes.equals(newExcludes)) {
+        excludes = newExcludes;
+        updated = true;
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Updated excludes: " + excludes);
+        }
+      }
     }
     return updated;
   }
@@ -100,8 +108,9 @@ public abstract class HostsFileReader implements HostsReader {
    */
   public synchronized boolean refresh(AdminOperationsProtocol aop, int refreshSec) throws IOException {
     Preconditions.checkState(initialized);
+    LOG.info("Enabling automagic refreshNodes every " + refreshSec + " seconds.");
     Timer refreshTimer = new Timer();
-    refreshTimer.schedule(new HostsFileRefreshTask(aop), refreshSec, refreshSec);
+    refreshTimer.schedule(new HostsFileRefreshTask(aop), refreshSec, refreshSec * 1000);
     return refresh();
   }
 
@@ -136,7 +145,6 @@ public abstract class HostsFileReader implements HostsReader {
               break;
             }
             if (!node.equals("")) {
-              LOG.info("Adding " + node + " to the list of hosts from " + filename);
               set.add(node);  // might need to add canonical name
             }
           }
