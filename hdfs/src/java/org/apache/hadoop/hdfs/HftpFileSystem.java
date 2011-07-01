@@ -70,9 +70,8 @@ import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 import org.xml.sax.helpers.XMLReaderFactory;
 
-
-
-/** An implementation of a protocol for accessing filesystems over HTTP.
+/**
+ * An implementation of a protocol for accessing filesystems over HTTP.
  * The following implementation provides a limited, read-only interface
  * to a filesystem over HTTP.
  * @see org.apache.hadoop.hdfs.server.namenode.ListPathsServlet
@@ -190,9 +189,6 @@ public class HftpFileSystem extends FileSystem {
         }
       }
       
-      //Renew TGT if needed
-      ugi.reloginFromKeytab();
-      
       //since we don't already have a token, go get one over https
       if (delegationToken == null) {
         delegationToken = 
@@ -204,8 +200,10 @@ public class HftpFileSystem extends FileSystem {
   
 
   @Override
-  public Token<?> getDelegationToken(final String renewer) throws IOException {
+  public synchronized Token<?> getDelegationToken(final String renewer) throws IOException {
     try {
+      //Renew TGT if needed
+      ugi.reloginFromKeytab();
       return ugi.doAs(new PrivilegedExceptionAction<Token<?>>() {
         public Token<?> run() throws IOException {
           Credentials c;
@@ -246,17 +244,26 @@ public class HftpFileSystem extends FileSystem {
     } 
   }
 
-
-  /* 
-    Construct URL pointing to file on namenode
-  */
-  URL getNamenodeFileURL(Path f) throws IOException {
-    return getNamenodeURL("/data" + f.toUri().getPath(), "ugi=" + getUgiParameter());
+  /**
+   * Return a URL pointing to given path on the namenode.
+   *
+   * @param p path to obtain the URL for
+   * @return namenode URL referring to the given path
+   * @throws IOException on error constructing the URL
+   */
+  URL getNamenodeFileURL(Path p) throws IOException {
+    return getNamenodeURL("/data" + p.toUri().getPath(),
+                          "ugi=" + getUgiParameter());
   }
 
-  /* 
-    Construct URL pointing to namenode. 
-  */
+  /**
+   * Return a URL pointing to given path on the namenode.
+   *
+   * @param path to obtain the URL for
+   * @param query string to append to the path
+   * @return namenode URL referring to the given path
+   * @throws IOException on error constructing the URL
+   */
   URL getNamenodeURL(String path, String query) throws IOException {
     try {
       final URL url = new URI("http", null, nnAddr.getHostName(),
@@ -306,7 +313,7 @@ public class HftpFileSystem extends FileSystem {
     try {
       connection.setRequestMethod("GET");
       connection.connect();
-    } catch(IOException ioe) {
+    } catch (IOException ioe) {
       throwIOExceptionFromConnection(connection, ioe);
     }
     return connection;

@@ -1425,6 +1425,10 @@ public class DataNode extends Configured
     return blockPoolManager.getAllNamenodeThreads();
   }
   
+  int getBpOsCount() {
+    return blockPoolManager.getAllNamenodeThreads().length;
+  }
+  
   /**
    * Initializes the {@link #data}. The initialization is done only once, when
    * handshake with the the first namenode is completed.
@@ -1973,8 +1977,8 @@ public class DataNode extends Configured
               EnumSet.of(BlockTokenSecretManager.AccessMode.WRITE));
         }
 
-        Sender.opWriteBlock(out,
-            b, 0, stage, 0, 0, 0, clientname, srcNode, targets, accessToken);
+        new Sender(out).writeBlock(b, accessToken, clientname, targets, srcNode,
+            stage, 0, 0, 0, 0);
 
         // send data & checksum
         blockSender.sendBlock(out, baseStream, null);
@@ -2134,6 +2138,10 @@ public class DataNode extends Configured
     while (shouldRun) {
       try {
         blockPoolManager.joinAll();
+        if (blockPoolManager.getAllNamenodeThreads() != null
+            && blockPoolManager.getAllNamenodeThreads().length == 0) {
+          shouldRun = false;
+        }
         Thread.sleep(2000);
       } catch (InterruptedException ex) {
         LOG.warn("Received exception in Datanode#join: " + ex);
@@ -2178,20 +2186,21 @@ public class DataNode extends Configured
         continue;
       }
       // drop any (illegal) authority in the URI for backwards compatibility
-      File data = new File(dirURI.getPath());
+      File dir = new File(dirURI.getPath());
       try {
-        DiskChecker.checkDir(localFS, new Path(data.toURI()), permission);
-        dirs.add(data);
-      } catch (IOException e) {
-        LOG.warn("Invalid directory in: "
-                 + DFS_DATANODE_DATA_DIR_KEY + ": ", e);
-        invalidDirs.append("\"").append(data.getCanonicalPath()).append("\" ");
+        DiskChecker.checkDir(localFS, new Path(dir.toURI()), permission);
+        dirs.add(dir);
+      } catch (IOException ioe) {
+        LOG.warn("Invalid " + DFS_DATANODE_DATA_DIR_KEY + " "
+            + dir + " : ", ioe);
+        invalidDirs.append("\"").append(dir.getCanonicalPath()).append("\" ");
       }
     }
-    if (dirs.size() == 0)
+    if (dirs.size() == 0) {
       throw new IOException("All directories in "
           + DFS_DATANODE_DATA_DIR_KEY + " are invalid: "
           + invalidDirs);
+    }
     return dirs;
   }
 
@@ -2272,6 +2281,13 @@ public class DataNode extends Configured
     } catch (Throwable e) {
       LOG.error(StringUtils.stringifyException(e));
       System.exit(-1);
+    } finally {
+      // We need to add System.exit here because either shutdown was called or
+      // some disk related conditions like volumes tolerated or volumes required
+      // condition was not met. Also, In secure mode, control will go to Jsvc
+      // and Datanode process hangs without System.exit.
+      LOG.warn("Exiting Datanode");
+      System.exit(0);
     }
   }
   

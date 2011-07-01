@@ -28,12 +28,13 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.protocol.FSConstants;
 import org.apache.hadoop.hdfs.server.balancer.Balancer;
 import org.apache.hadoop.hdfs.util.DataTransferThrottler;
+import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.util.Daemon;
 import org.apache.hadoop.util.StringUtils;
-import org.apache.hadoop.hdfs.DFSConfigKeys;
 
 
 /**
@@ -47,7 +48,7 @@ class DataXceiverServer implements Runnable, FSConstants {
   
   ServerSocket ss;
   DataNode datanode;
-  // Record all sockets opend for data transfer
+  // Record all sockets opened for data transfer
   Map<Socket, Socket> childSockets = Collections.synchronizedMap(
                                        new HashMap<Socket, Socket>());
   
@@ -128,31 +129,35 @@ class DataXceiverServer implements Runnable, FSConstants {
                    DFSConfigKeys.DFS_DATANODE_BALANCE_BANDWIDTHPERSEC_DEFAULT));
   }
 
-  /**
-   */
+  @Override
   public void run() {
     while (datanode.shouldRun) {
       try {
         Socket s = ss.accept();
         s.setTcpNoDelay(true);
-        new Daemon(datanode.threadGroup, 
-            new DataXceiver(s, datanode, this)).start();
+        final DataXceiver exciver;
+        try {
+          exciver = new DataXceiver(s, datanode, this);
+        } catch(IOException e) {
+          IOUtils.closeSocket(s);
+          throw e;
+        }
+        new Daemon(datanode.threadGroup, exciver).start();
       } catch (SocketTimeoutException ignored) {
         // wake up to see if should continue to run
       } catch (IOException ie) {
-        LOG.warn(datanode.getMachineName() + ":DataXceiveServer: " 
-                                + StringUtils.stringifyException(ie));
+        LOG.warn(datanode.getMachineName() + ":DataXceiverServer: ", ie);
       } catch (Throwable te) {
-        LOG.error(datanode.getMachineName() + ":DataXceiveServer: Exiting due to:" 
-                                 + StringUtils.stringifyException(te));
+        LOG.error(datanode.getMachineName()
+            + ":DataXceiverServer: Exiting due to: ", te);
         datanode.shouldRun = false;
       }
     }
     try {
       ss.close();
     } catch (IOException ie) {
-      LOG.warn(datanode.getMachineName() + ":DataXceiveServer: " 
-                              + StringUtils.stringifyException(ie));
+      LOG.warn(datanode.getMachineName()
+          + ":DataXceiverServer: Close exception due to: ", ie);
     }
   }
   
@@ -162,7 +167,7 @@ class DataXceiverServer implements Runnable, FSConstants {
     try {
       this.ss.close();
     } catch (IOException ie) {
-      LOG.warn(datanode.getMachineName() + ":DataXceiveServer.kill(): " 
+      LOG.warn(datanode.getMachineName() + ":DataXceiverServer.kill(): "
                               + StringUtils.stringifyException(ie));
     }
 
