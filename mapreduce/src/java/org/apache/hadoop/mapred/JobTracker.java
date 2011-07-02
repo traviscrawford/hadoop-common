@@ -4240,12 +4240,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
   }
 
   private synchronized void refreshHosts() throws IOException {
-    // Reread the config to get HOSTS and HOSTS_EXCLUDE filenames.
-    // Update the file names and refresh internal includes and excludes list
-    LOG.info("Refreshing hosts information");
-    Configuration conf = new Configuration();
     hostsReader.refresh();
-    
     Set<String> excludeSet = new HashSet<String>();
     for(Map.Entry<String, TaskTracker> eSet : taskTrackers.entrySet()) {
       String trackerName = eSet.getKey();
