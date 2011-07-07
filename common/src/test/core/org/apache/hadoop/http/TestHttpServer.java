@@ -45,18 +45,23 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 
+import junit.framework.Assert;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
+import org.apache.hadoop.http.HttpServer.QuotingInputFilter.RequestQuoter;
 import org.apache.hadoop.security.Groups;
 import org.apache.hadoop.security.ShellBasedUnixGroupsMapping;
 import org.apache.hadoop.security.authorize.AccessControlList;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 public class TestHttpServer extends HttpServerFunctionalTest {
+  static final Log LOG = LogFactory.getLog(TestHttpServer.class);
   private static HttpServer server;
   private static URL baseUrl;
   private static final int MAX_THREADS = 10;
@@ -132,6 +137,7 @@ public class TestHttpServer extends HttpServerFunctionalTest {
     server.addServlet("htmlcontent", "/htmlcontent", HtmlContentServlet.class);
     server.start();
     baseUrl = getServerURL(server);
+    LOG.info("HTTP server started: "+ baseUrl);
   }
   
   @AfterClass public static void cleanup() throws Exception {
@@ -229,9 +235,6 @@ public class TestHttpServer extends HttpServerFunctionalTest {
    * 
    */
   public static class DummyServletFilter implements Filter {
-
-    private static final Log LOG = LogFactory.getLog(
-        DummyServletFilter.class);
     @Override
     public void destroy() { }
 
@@ -379,4 +382,26 @@ public class TestHttpServer extends HttpServerFunctionalTest {
     }
     myServer.stop();
   }
+  
+  @Test
+  public void testRequestQuoterWithNull() throws Exception {
+    HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+    Mockito.doReturn(null).when(request).getParameterValues("dummy");
+    RequestQuoter requestQuoter = new RequestQuoter(request);
+    String[] parameterValues = requestQuoter.getParameterValues("dummy");
+    Assert.assertEquals("It should return null "
+        + "when there are no values for the parameter", null, parameterValues);
+  }
+
+  @Test
+  public void testRequestQuoterWithNotNull() throws Exception {
+    HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+    String[] values = new String[] { "abc", "def" };
+    Mockito.doReturn(values).when(request).getParameterValues("dummy");
+    RequestQuoter requestQuoter = new RequestQuoter(request);
+    String[] parameterValues = requestQuoter.getParameterValues("dummy");
+    Assert.assertTrue("It should return Parameter Values", Arrays.equals(
+        values, parameterValues));
+  }
+
 }
